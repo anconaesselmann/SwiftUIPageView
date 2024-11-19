@@ -73,3 +73,5 @@ struct ExampleContent: View {
     }
 }
 ```
+
+![Nov-19-2024 13-26-10](https://github.com/user-attachments/assets/115909e3-e6f6-4973-838f-ee7153f53d1c)
