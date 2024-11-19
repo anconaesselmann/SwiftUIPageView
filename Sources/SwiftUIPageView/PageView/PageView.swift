@@ -89,7 +89,6 @@ public struct PageView<Content, ElementId>: View
                                 direction = newDirection
                             }
                             rect = CGSize(width: gesture.translation.width, height: 0)
-                            print(rect, direction, isDragging, selected)
                         }
                         .onEnded { gesture in
                             withAnimation {
