@@ -3,11 +3,16 @@
 
 import SwiftUI
 
-public struct PageView<Content: View>: View {
-    @Binding
-    private var selected: Int
+public struct PageView<Content, ElementId>: View
+    where
+        Content: View,
+        ElementId: Hashable
 
-    private let count: Int = 7
+{
+    @Binding
+    private var selected: ElementId
+
+    private let elementIterator: any ElementIdIterator<ElementId>
 
     @State
     private var direction: Direction = .rightToLeft
@@ -27,22 +32,28 @@ public struct PageView<Content: View>: View {
     @State
     private var isDragging = false
 
-    private let content: (Int) -> Content
+    private let content: (ElementId) -> Content
 
     public init(
-        selected: Binding<Int>,
+        selected: Binding<ElementId>,
+        _ elementIterator: any ElementIdIterator<ElementId>,
         @ViewBuilder
-        _ content: @escaping (Int) -> Content
+        _ content: @escaping (ElementId) -> Content
     ) {
         _selected = selected
+        self.elementIterator = elementIterator
         self.content = content
     }
 
     public var body: some View {
         ZStack {
 //        ZStack(alignment: .top) {
-            if isDragging, direction == .leftToRight, selected - 1 >= 0 {
-                content(selected - 1)
+            if
+                isDragging,
+                direction == .leftToRight,
+                let previous = elementIterator.index(before: selected)
+            {
+                content(previous)
                     .offset(CGSize(width: rect.width - width, height: 0))
                     .frame(width: width)
             }
@@ -85,13 +96,13 @@ public struct PageView<Content: View>: View {
                                 if abs(gesture.translation.width) > 100 {
                                     switch direction {
                                     case .rightToLeft:
-                                        if selected + 1 < count {
+                                        if let next = elementIterator.index(after: selected) {
                                             rect = CGSize(width: -width, height: 0)
                                         } else {
                                             rect = .zero
                                         }
                                     case .leftToRight:
-                                        if selected - 1 >= 0 {
+                                        if let previous = elementIterator.index(before: selected) {
                                             rect = CGSize(width: width, height: 0)
                                         } else {
                                             rect = .zero
@@ -105,12 +116,12 @@ public struct PageView<Content: View>: View {
                                     rect = .zero
                                     switch direction {
                                     case .rightToLeft:
-                                        if selected + 1 < count {
-                                            selected = min(selected + 1, count - 1)
+                                        if let next = elementIterator.index(after: selected) {
+                                            selected = next
                                         }
                                     case .leftToRight:
-                                        if selected - 1 >= 0 {
-                                            selected = max(selected - 1, 0)
+                                        if let before = elementIterator.index(before: selected) {
+                                            selected = before
                                         }
                                     }
                                 }
@@ -119,8 +130,12 @@ public struct PageView<Content: View>: View {
                         }
                 )
                 .frame(width: width)
-            if isDragging, direction == .rightToLeft, selected + 1 < count {
-                content(selected + 1)
+            if 
+                isDragging,
+                direction == .rightToLeft,
+                let next = elementIterator.index(after: selected)
+            {
+                content(next)
                     .offset(CGSize(width: rect.width + width, height: 0))
                     .frame(width: width)
             }
@@ -142,20 +157,5 @@ public struct PageView<Content: View>: View {
             }
         }
         .clipped()
-    }
-}
-
-
-extension View {
-    func eraseToAnyView() -> AnyView {
-        AnyView(self)
-    }
-}
-
-public struct ViewRectKey: PreferenceKey {
-    public typealias Value = Array<CGRect>
-    public static var defaultValue = [CGRect]()
-    public static func reduce(value: inout Value, nextValue: () -> Value) {
-        value += nextValue()
     }
 }
