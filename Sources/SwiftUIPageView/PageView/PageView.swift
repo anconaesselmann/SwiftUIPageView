@@ -25,6 +25,14 @@ public struct PageView<Content, ElementId>: View
     @State
     private var width: CGFloat = .zero
 
+    private var pageBackgroundColor: Color = .clear
+
+    public func pageBackground(color: Color) -> Self {
+        var copy = self
+        copy.pageBackgroundColor = color
+        return copy
+    }
+
     private enum Direction {
         case rightToLeft, leftToRight
     }
@@ -56,10 +64,21 @@ public struct PageView<Content, ElementId>: View
                 content(previous)
                     .offset(CGSize(width: rect.width - width, height: 0))
                     .frame(width: width)
+                    .background(pageBackgroundColor)
+            }
+            if
+                isDragging,
+                direction == .rightToLeft,
+                let next = elementIterator.index(after: selected)
+            {
+                content(next)
+                    .background(pageBackgroundColor)
+                    .offset(CGSize(width: rect.width + width, height: 0))
+                    .frame(width: width)
             }
             content(selected)
                 .background(GeometryReader {
-                    Color.clear.preference(
+                    pageBackgroundColor.preference(
                         key: ViewRectKey.self,
                         value: [$0.frame(in: .local)]
                     )
@@ -77,8 +96,12 @@ public struct PageView<Content, ElementId>: View
                     )
                 )
                 .gesture(
-                    DragGesture()
+                    DragGesture(minimumDistance: 2)
                         .onChanged { gesture in
+                            if !isDragging, abs(gesture.translation.height) > 5 {
+                                rect = .zero
+                                return
+                            }
                             if isDragging != true {
                                 isDragging = true
                             }
@@ -129,20 +152,11 @@ public struct PageView<Content, ElementId>: View
                         }
                 )
                 .frame(width: width)
-            if 
-                isDragging,
-                direction == .rightToLeft,
-                let next = elementIterator.index(after: selected)
-            {
-                content(next)
-                    .offset(CGSize(width: rect.width + width, height: 0))
-                    .frame(width: width)
-            }
         }
         .frame(height: frame.height)
         .frame(maxWidth: .infinity)
         .background(GeometryReader { proxy in
-            Color.clear
+            pageBackgroundColor
                 .onAppear {
                     width = proxy.size.width
                 }
