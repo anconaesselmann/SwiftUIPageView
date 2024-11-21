@@ -42,15 +42,33 @@ public struct PageView<Content, ElementId>: View
 
     private let content: (ElementId) -> Content
 
+    var _adjustOnSwipe: Bool
+
     public init(
         selected: Binding<ElementId>,
         _ elementIterator: any ElementIdIterator<ElementId>,
+        adjustOnSwipe: Bool = false,
         @ViewBuilder
         _ content: @escaping (ElementId) -> Content
     ) {
         _selected = selected
         self.elementIterator = elementIterator
+        self._adjustOnSwipe = adjustOnSwipe
         self.content = content
+    }
+
+    @ViewBuilder
+    private func _pageBackground() -> some View {
+        if _adjustOnSwipe {
+            GeometryReader {
+                pageBackgroundColor.preference(
+                    key: ViewRectKey.self,
+                    value: [$0.frame(in: .local)]
+                )
+            }
+        } else {
+            pageBackgroundColor
+        }
     }
 
     public var body: some View {
@@ -62,9 +80,9 @@ public struct PageView<Content, ElementId>: View
                 let previous = elementIterator.index(before: selected)
             {
                 content(previous)
-                    .offset(CGSize(width: rect.width - width, height: 0))
                     .frame(width: width)
-                    .background(pageBackgroundColor)
+                    .background(_pageBackground())
+                    .offset(CGSize(width: rect.width - width, height: 0))
             }
             if
                 isDragging,
@@ -72,9 +90,9 @@ public struct PageView<Content, ElementId>: View
                 let next = elementIterator.index(after: selected)
             {
                 content(next)
-                    .background(pageBackgroundColor)
-                    .offset(CGSize(width: rect.width + width, height: 0))
                     .frame(width: width)
+                    .background(_pageBackground())
+                    .offset(CGSize(width: rect.width + width, height: 0))
             }
             content(selected)
                 .background(GeometryReader {
@@ -158,17 +176,27 @@ public struct PageView<Content, ElementId>: View
         .background(GeometryReader { proxy in
             pageBackgroundColor
                 .onAppear {
+                    // TODO: Read change from environment to adjust width when device rotates or window gets rescaled
                     width = proxy.size.width
                 }
         })
         .onPreferenceChange(ViewRectKey.self) { rects in
             let new = rects.first ?? .zero
             Task { @MainActor in
+                try await Task.sleep(nanoseconds: 300_000_000)
                 withAnimation {
                     frame = new.size
                 }
             }
         }
         .clipped()
+    }
+}
+
+public extension PageView {
+    func adjustOnSwipe() -> Self {
+        var copy = self
+        copy._adjustOnSwipe = true
+        return copy
     }
 }
