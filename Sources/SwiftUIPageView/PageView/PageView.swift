@@ -27,6 +27,8 @@ public struct PageView<Content, ElementId>: View
 
     private var pageBackgroundColor: Color = .clear
 
+    private let _lightImpact = UIImpactFeedbackGenerator(style: .light)
+
     public func pageBackground(color: Color) -> Self {
         var copy = self
         copy.pageBackgroundColor = color
@@ -40,9 +42,16 @@ public struct PageView<Content, ElementId>: View
     @State
     private var isDragging = false
 
+    @State
+    private var impactedWhenThresholdExceeded: Bool = false
+
     private let content: (ElementId) -> Content
 
     var _adjustOnSwipe: Bool
+
+    var _impacts: Set<Impacts> = []
+
+    var _threshold: Double = 0.25
 
     public init(
         selected: Binding<ElementId>,
@@ -122,6 +131,9 @@ public struct PageView<Content, ElementId>: View
                             }
                             if isDragging != true {
                                 isDragging = true
+                                if _impacts.contains(.start) {
+                                    _lightImpact.impactOccurred()
+                                }
                             }
                             let newDirection: Direction = gesture.translation.width < 0
                                     ? .rightToLeft
@@ -129,13 +141,24 @@ public struct PageView<Content, ElementId>: View
                             if newDirection != direction {
                                 direction = newDirection
                             }
+                            if _impacts.contains(.threshold) {
+                                if abs(gesture.translation.width) > min((width * _threshold), 500) {
+                                    if !impactedWhenThresholdExceeded {
+                                        impactedWhenThresholdExceeded = true
+                                        _lightImpact.impactOccurred()
+                                    }
+                                } else if impactedWhenThresholdExceeded {
+                                    impactedWhenThresholdExceeded = false
+                                    _lightImpact.impactOccurred()
+                                }
+                            }
                             withAnimation {
                                 rect = CGSize(width: gesture.translation.width, height: 0)
                             }
                         }
                         .onEnded { gesture in
                             withAnimation {
-                                if abs(gesture.translation.width) > 100 {
+                                if abs(gesture.translation.width) > min((width * _threshold), 500) {
                                     switch direction {
                                     case .rightToLeft:
                                         if let next = elementIterator.index(after: selected) {
@@ -154,7 +177,7 @@ public struct PageView<Content, ElementId>: View
                                     rect = .zero
                                 }
                             } completion: {
-                                if abs(gesture.translation.width) > 100 {
+                                if abs(gesture.translation.width) > min((width * _threshold), 300) {
                                     rect = .zero
                                     switch direction {
                                     case .rightToLeft:
@@ -166,6 +189,15 @@ public struct PageView<Content, ElementId>: View
                                             selected = before
                                         }
                                     }
+                                    if !isDragging, _impacts.contains(.end) {
+                                        _lightImpact.impactOccurred()
+                                    }
+                                }
+                                if impactedWhenThresholdExceeded {
+                                    impactedWhenThresholdExceeded = false
+                                }
+                                if isDragging, _impacts.contains(.end) {
+                                    _lightImpact.impactOccurred()
                                 }
                                 isDragging = false
                             }
@@ -199,5 +231,35 @@ public extension PageView {
         var copy = self
         copy._adjustOnSwipe = true
         return copy
+    }
+
+    func impacts(_ impacts: Set<Impacts>) -> Self {
+        var copy = self
+        copy._impacts = impacts
+        return copy
+    }
+
+    func impacts(_ impacts: Impacts...) -> Self {
+        self.impacts(Set(impacts))
+    }
+
+    func threshold(_ threshold: Double) -> Self {
+        var copy = self
+        copy._threshold = min(0.75, max(0.05, threshold))
+        return copy
+    }
+}
+
+public enum Impacts: Int, Hashable {
+    case start, end, threshold
+
+    static var all: Set<Self> {
+        [.start, .end, .threshold]
+    }
+}
+
+public extension Set where Element == Impacts {
+    static var all: Self {
+        Impacts.all
     }
 }
