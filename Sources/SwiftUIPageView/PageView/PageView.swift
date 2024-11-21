@@ -129,7 +129,9 @@ public struct PageView<Content, ElementId>: View
                             if newDirection != direction {
                                 direction = newDirection
                             }
-                            rect = CGSize(width: gesture.translation.width, height: 0)
+                            withAnimation {
+                                rect = CGSize(width: gesture.translation.width, height: 0)
+                            }
                         }
                         .onEnded { gesture in
                             withAnimation {
@@ -183,7 +185,6 @@ public struct PageView<Content, ElementId>: View
         .onPreferenceChange(ViewRectKey.self) { rects in
             let new = rects.first ?? .zero
             Task { @MainActor in
-                try await Task.sleep(nanoseconds: 300_000_000)
                 withAnimation {
                     frame = new.size
                 }
