@@ -249,17 +249,3 @@ public extension PageView {
         return copy
     }
 }
-
-public enum Impacts: Int, Hashable {
-    case start, end, threshold
-
-    static var all: Set<Self> {
-        [.start, .end, .threshold]
-    }
-}
-
-public extension Set where Element == Impacts {
-    static var all: Self {
-        Impacts.all
-    }
-}
