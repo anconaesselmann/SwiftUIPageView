@@ -45,13 +45,18 @@ public struct PageView<Content, ElementId>: View
     @State
     private var impactedWhenThresholdExceeded: Bool = false
 
+    @State
+    private var thresholdCrossed: Bool = false
+
     private let content: (ElementId) -> Content
 
-    var _adjustOnSwipe: Bool
+    internal var _adjustOnSwipe: Bool
 
-    var _impacts: Set<Impacts> = []
+    internal var _impacts: Set<Impacts> = []
 
-    var _threshold: Double = 0.25
+    internal var _threshold: Double = 0.25
+
+    internal var _onThresholdCrossed: ((ElementId?) -> Void)?
 
     public init(
         selected: Binding<ElementId>,
@@ -152,6 +157,24 @@ public struct PageView<Content, ElementId>: View
                                     _lightImpact.impactOccurred()
                                 }
                             }
+
+                            if abs(gesture.translation.width) > min((width * _threshold), 500) {
+                                if !thresholdCrossed {
+                                    thresholdCrossed = true
+                                    if direction == .rightToLeft {
+                                        if let next = elementIterator.index(after: selected) {
+                                            _onThresholdCrossed?(next)
+                                        }
+                                    } else if direction == .leftToRight {
+                                        if let prev = elementIterator.index(before: selected) {
+                                            _onThresholdCrossed?(prev)
+                                        }
+                                    }
+                                }
+                            } else if thresholdCrossed {
+                                thresholdCrossed = false
+                                _onThresholdCrossed?(nil)
+                            }
                             withAnimation {
                                 rect = CGSize(width: gesture.translation.width, height: 0)
                             }
@@ -200,6 +223,7 @@ public struct PageView<Content, ElementId>: View
                                     _lightImpact.impactOccurred()
                                 }
                                 isDragging = false
+                                _onThresholdCrossed?(nil)
                             }
                         }
                 )
@@ -246,6 +270,12 @@ public extension PageView {
     func threshold(_ threshold: Double) -> Self {
         var copy = self
         copy._threshold = min(0.75, max(0.05, threshold))
+        return copy
+    }
+
+    func onThresholdCrossed(_ onCrossed: @escaping (ElementId?) -> Void) -> Self {
+        var copy = self
+        copy._onThresholdCrossed = onCrossed
         return copy
     }
 }
