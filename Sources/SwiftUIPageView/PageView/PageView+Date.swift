@@ -21,12 +21,14 @@ extension PageView where ElementId == Date {
     public init(
         selected: Binding<ElementId>,
         _ iteratorType: DateIteratorType = .default,
+        idPages: Bool = false,
         @ViewBuilder
         _ content: @escaping (ElementId) -> Content
     ) {
         self.init(
             selected: selected,
             iteratorType.iterator,
+            idPages: idPages,
             content
         )
     }

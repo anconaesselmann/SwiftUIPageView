@@ -42,6 +42,8 @@ public struct PageView<Content, ElementId>: View
     @State
     private var isDragging = false
 
+    var isDraggingBinding: Binding<Bool>?
+
     @State
     private var impactedWhenThresholdExceeded: Bool = false
 
@@ -62,6 +64,7 @@ public struct PageView<Content, ElementId>: View
         selected: Binding<ElementId>,
         _ elementIterator: any ElementIdIterator<ElementId>,
         adjustOnSwipe: Bool = false,
+        idPages: Bool = false,
         @ViewBuilder
         _ content: @escaping (ElementId) -> Content
     ) {
@@ -69,6 +72,10 @@ public struct PageView<Content, ElementId>: View
         self.elementIterator = elementIterator
         self._adjustOnSwipe = adjustOnSwipe
         self.content = content
+        let id = UUID()
+        self.id = id
+        self.next = id
+        self.idPages = idPages
     }
 
     @ViewBuilder
@@ -85,6 +92,12 @@ public struct PageView<Content, ElementId>: View
         }
     }
 
+    let idPages: Bool
+    @State
+    var id: UUID
+    @State
+    var next: UUID
+
     public var body: some View {
         ZStack {
             if
@@ -95,6 +108,9 @@ public struct PageView<Content, ElementId>: View
                 content(previous)
                     .frame(width: width)
                     .background(_pageBackground())
+                    .if(idPages) {
+                        $0.id(next)
+                    }
                     .offset(CGSize(width: rect.width - width, height: 0))
             }
             if
@@ -105,6 +121,9 @@ public struct PageView<Content, ElementId>: View
                 content(next)
                     .frame(width: width)
                     .background(_pageBackground())
+                    .if(idPages) {
+                        $0.id(next)
+                    }
                     .offset(CGSize(width: rect.width + width, height: 0))
             }
             content(selected)
@@ -114,6 +133,9 @@ public struct PageView<Content, ElementId>: View
                         value: [$0.frame(in: .local)]
                     )
                 })
+                .if(idPages) {
+                    $0.id(id)
+                }
                 .offset(rect)
                 .transition(.identity)
                 .gesture(
@@ -124,7 +146,11 @@ public struct PageView<Content, ElementId>: View
                                 return
                             }
                             if isDragging != true {
+                                if idPages {
+                                    next = UUID()
+                                }
                                 isDragging = true
+                                isDraggingBinding?.wrappedValue = true
                                 if _impacts.contains(.start) {
                                     _lightImpact.impactOccurred()
                                 }
@@ -212,6 +238,10 @@ public struct PageView<Content, ElementId>: View
                                     _lightImpact.impactOccurred()
                                 }
                                 isDragging = false
+                                if idPages {
+                                    id = next
+                                }
+                                isDraggingBinding?.wrappedValue = false
                                 _onThresholdCrossed?(nil)
                             }
                         }
@@ -267,5 +297,27 @@ public extension PageView {
         var copy = self
         copy._onThresholdCrossed = onCrossed
         return copy
+    }
+
+    func isDragging(_ isDragging: Binding<Bool>) -> Self {
+        var copy = self
+        copy.isDraggingBinding = isDragging
+        return copy
+    }
+}
+
+// https://www.avanderlee.com/swiftui/conditional-view-modifier/
+extension View {
+    /// Applies the given transform if the given condition evaluates to `true`.
+    /// - Parameters:
+    ///   - condition: The condition to evaluate.
+    ///   - transform: The transform to apply to the source `View`.
+    /// - Returns: Either the original `View` or the modified `View` if the condition is `true`.
+    @ViewBuilder func `if`<Content: View>(_ condition: Bool, transform: (Self) -> Content) -> some View {
+        if condition {
+            transform(self)
+        } else {
+            self
+        }
     }
 }
