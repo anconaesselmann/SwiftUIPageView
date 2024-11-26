@@ -87,7 +87,6 @@ public struct PageView<Content, ElementId>: View
 
     public var body: some View {
         ZStack {
-//        ZStack(alignment: .top) {
             if
                 isDragging,
                 direction == .leftToRight,
@@ -116,17 +115,7 @@ public struct PageView<Content, ElementId>: View
                     )
                 })
                 .offset(rect)
-                .transition(
-                    direction == .rightToLeft
-                    ? .asymmetric(
-                        insertion: .move(edge: .trailing),
-                        removal: .move(edge: .leading)
-                    )
-                    : .asymmetric(
-                        insertion: .move(edge: .leading),
-                        removal: .move(edge: .trailing)
-                    )
-                )
+                .transition(.identity)
                 .gesture(
                     DragGesture(minimumDistance: 2)
                         .onChanged { gesture in
@@ -241,6 +230,7 @@ public struct PageView<Content, ElementId>: View
         .onPreferenceChange(ViewRectKey.self) { rects in
             let new = rects.first ?? .zero
             Task { @MainActor in
+                try await Task.sleep(nanoseconds: 1_000_000)
                 withAnimation {
                     frame = new.size
                 }
