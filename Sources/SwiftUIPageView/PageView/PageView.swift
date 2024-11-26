@@ -176,6 +176,7 @@ public struct PageView<Content, ElementId>: View
                             if abs(gesture.translation.width) > min((width * _threshold), 500) {
                                 if !thresholdCrossed {
                                     thresholdCrossed = true
+                                    setNewHeight()
                                     if direction == .rightToLeft {
                                         if let next = elementIterator.index(after: selected) {
                                             _onThresholdCrossed?(next)
@@ -188,6 +189,7 @@ public struct PageView<Content, ElementId>: View
                                 }
                             } else if thresholdCrossed {
                                 thresholdCrossed = false
+                                setOldHeight()
                                 _onThresholdCrossed?(nil)
                             }
                             withAnimation {
@@ -261,15 +263,35 @@ public struct PageView<Content, ElementId>: View
                 }
         })
         .onPreferenceChange(ViewRectKey.self) { rects in
-            let new = rects.first ?? .zero
-            Task { @MainActor in
-                try await Task.sleep(nanoseconds: 1_000_000)
-                withAnimation {
-                    frame = new.size
-                }
+            self.rects = rects
+            if rects.count == 1 {
+                setNewHeight()
             }
         }
         .clipped()
+    }
+
+    @State
+    var rects: ViewRectKey.Value?
+
+    func setNewHeight() {
+        let new = rects?.first ?? .zero
+        Task { @MainActor in
+            try await Task.sleep(nanoseconds: 1_000_000)
+            withAnimation {
+                frame = new.size
+            }
+        }
+    }
+
+    func setOldHeight() {
+        let old = rects?.last ?? .zero
+        Task { @MainActor in
+            try await Task.sleep(nanoseconds: 1_000_000)
+            withAnimation {
+                frame = old.size
+            }
+        }
     }
 }
 
