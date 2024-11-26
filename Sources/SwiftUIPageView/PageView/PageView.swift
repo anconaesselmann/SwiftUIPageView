@@ -195,6 +195,9 @@ public struct PageView<Content, ElementId>: View
                             }
                         }
                         .onEnded { gesture in
+                            guard isDragging else {
+                                return
+                            }
                             withAnimation {
                                 if abs(gesture.translation.width) > min((width * _threshold), 500) {
                                     switch direction {
