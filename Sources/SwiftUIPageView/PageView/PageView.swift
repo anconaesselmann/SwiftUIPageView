@@ -27,7 +27,15 @@ public struct PageView<Content, ElementId>: View
 
     private var pageBackgroundColor: Color = .clear
 
+    #if !os(macOS)
     private let _lightImpact = UIImpactFeedbackGenerator(style: .light)
+    #endif
+
+    private func impact() {
+        #if !os(macOS)
+        _lightImpact.impactOccurred()
+        #endif
+    }
 
     public func pageBackground(color: Color) -> Self {
         var copy = self
@@ -152,7 +160,7 @@ public struct PageView<Content, ElementId>: View
                                 isDragging = true
                                 isDraggingBinding?.wrappedValue = true
                                 if _impacts.contains(.start) {
-                                    _lightImpact.impactOccurred()
+                                    impact()
                                 }
                             }
                             let newDirection: Direction = gesture.translation.width < 0
@@ -165,11 +173,11 @@ public struct PageView<Content, ElementId>: View
                                 if abs(gesture.translation.width) > min((width * _threshold), 500) {
                                     if !impactedWhenThresholdExceeded {
                                         impactedWhenThresholdExceeded = true
-                                        _lightImpact.impactOccurred()
+                                        impact()
                                     }
                                 } else if impactedWhenThresholdExceeded {
                                     impactedWhenThresholdExceeded = false
-                                    _lightImpact.impactOccurred()
+                                    impact()
                                 }
                             }
 
@@ -233,14 +241,14 @@ public struct PageView<Content, ElementId>: View
                                         }
                                     }
                                     if !isDragging, _impacts.contains(.end) {
-                                        _lightImpact.impactOccurred()
+                                        impact()
                                     }
                                 }
                                 if impactedWhenThresholdExceeded {
                                     impactedWhenThresholdExceeded = false
                                 }
                                 if isDragging, _impacts.contains(.end) {
-                                    _lightImpact.impactOccurred()
+                                    impact()
                                 }
                                 isDragging = false
                                 if idPages {
